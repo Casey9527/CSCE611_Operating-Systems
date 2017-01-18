@@ -1,0 +1,1012 @@
+#LyX file created by tex2lyx 2.1
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+%\documentstyle[11pt]{article}
+
+%% THIS SEEMS TO FIX PDFTex' pagesize problem!
+\usepackage{mytex}
+\usepackage{fullpage}
+\usepackage{headerfooter}
+\usepackage{paralist}
+
+
+\pageheader{CPSC--410/611/613}{}{Machine Problem 3}
+\pagefooter{{\tiny Ver. 2012C}}{}{Page \thepage}
+
+
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding auto
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 11
+\spacing single
+\use_hyperref true
+\pdf_bookmarks 0
+\pdf_bookmarksnumbered 0
+\pdf_bookmarksopen 0
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks 0
+\pdf_pdfborder 0
+\pdf_colorlinks 0
+\pdf_backref section
+\pdf_pdfusetitle 0
+\papersize letterpaper
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\align center
+
+\size large
+
+\series bold
+Machine Problem 3: Virtual Memory Management and Memory Allocation
+\family default
+\series default
+\shape default
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+
+\backslash
+[0.3in]
+\end_layout
+
+\end_inset
+
+
+\size default
+ 
+\end_layout
+
+\begin_layout Subsection*
+Introduction
+\end_layout
+
+\begin_layout Standard
+In this machine problem we continue our investigation of demand-paging based virtual memory system. For this we extend our solution for MP2 in two directions: 
+\end_layout
+
+\begin_layout Itemize
+First, we extend the page table management to support very large numbers and sizes of address spaces. For this, we must place the page table into 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+em
+\end_layout
+
+\end_inset
+
+ virtual memory
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+. As you will see, this will slightly complicate the page table management and the design of the page fault handlers. 
+\end_layout
+
+\begin_layout Itemize
+Second, we will implement a simple memory allocator and hook it up to the 
+\family typewriter
+new
+\family default
+\series default
+\shape default
+ and 
+\family typewriter
+delete
+\family default
+\series default
+\shape default
+ operators of C++. 
+\end_layout
+
+\begin_layout Standard
+As a result we will have a pretty flexible simple memory management system that we will be able to use for later machine problems. In particular, we will be able to dynamically allocate memory in a fashion that is familiar to us from standard user-level C++ programming.
+\end_layout
+
+\begin_layout Subsection*
+Support for Large Address Spaces
+\end_layout
+
+\begin_layout Standard
+To implement the page table management in the previous machine problem it was sufficient to store the page table directory page and any page table pages in directly-mapped frames. Since the logical address of these frames is identical to their physical address, it was very simple to manipulate the content of the page table directory and of the page table frames. This approach works fine when the number of address spaces and the size of the requested memory is small; otherwise, we very quickly run out of frames in the directly-mapped frame pool.
+\end_layout
+
+\begin_layout Standard
+In the current machine problem, we circumvent the size limitations of the directly-mapped memory by allocating page table pages (and possibly even page table directories if you want) in mapped memory, i.e. memory above 4MB in our case.
+\end_layout
+
+\begin_layout Subsubsection*
+Help! My Page Table Pages are in Mapped Memory!
+\end_layout
+
+\begin_layout Standard
+It will be pretty straightforward to move your page-table implementation from direct-mapped memory to mapped memory. When paging is turned on, the CPU issues logical addresses, and you will have problems working with the page table when you place it in mapped memory. In particular, you will want to modify entries in the page directory and page table pages, but the CPU can only issue logical addresses. You can maintain the mapping from logical addresses of page table pages and page directory to physical addresses by setting up complicated tables to do so. Fortunately, you have the page table that does this already for you. You simply need to find a way to make use of it. Tim Robinson's tutorial 
+\begin_inset Quotes eld
+\end_inset
+
+Memory Management 1
+\begin_inset Quotes erd
+\end_inset
+
+ (
+\begin_inset Flex Flex:URL
+status collapsed
+
+\begin_layout Plain Layout
+http://www.osdever.net/tutorials/view/memory-management-1
+\end_layout
+
+\end_inset
+
+) briefly addresses this problem. We will use the trick described by Robinson to have the last entry in the page table directory point back to the beginning of the page table.
+\end_layout
+
+\begin_layout Subsubsection*
+Recursive Page Table Look-up
+\end_layout
+
+\begin_layout Standard
+Both the page table directory and the page table pages contain physical addresses. If a logical address of the form 
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\family typewriter
+| X : 10 | Y : 10 | offset : 12 |
+\family default
+\series default
+\shape default
+
+\begin_inset Foot
+status collapsed
+
+
+\begin_layout Standard
+This expression represents a 32-bit value, with the first 10 bits having value 
+\family typewriter
+X
+\family default
+\series default
+\shape default
+, the following 10 bits having value 
+\family typewriter
+Y
+\family default
+\series default
+\shape default
+, and the last 12 bits having value 
+\family typewriter
+offset
+\family default
+\series default
+\shape default
+.
+\end_layout
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+is issued by the CPU, the memory management unit (MMU) will use the first 10 bits (value 
+\family typewriter
+X
+\family default
+\series default
+\shape default
+) to index into the page directory (i.e., relative to the Page Directory Base Register) to look up the Page Directory Entry (PDE). The PDE points to the appropriate page table page. The MMU will use the second 10 bits (value 
+\family typewriter
+Y
+\family default
+\series default
+\shape default
+) of the address to index into the page table page pointed to by the PDE to get the Page Table Entry (PTE). This entry will contain a pointer to the physical frame that contains the page.
+\end_layout
+
+\begin_layout Standard
+If we set the last entry in the page directory to point to the page directory itself, we can play a number of interesting tricks. For example, the address 
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\family typewriter
+| 1023 : 10 | 1023 : 10 | offset : 12 |
+\family default
+\series default
+\shape default
+ 
+\end_layout
+
+\begin_layout Standard
+will be resolved by the MMU as follows: The MMU will use the first 10 bits (value 1023) to index into the page directory to look up the PDE. PDE number 1023 points to the page directory itself. The MMU does not know about this and treats the page directory like any other page table page: It uses the second 10 bits to index into the (supposed) page table page to look up the PTE. Since the second 10 bits of the address are have value 1023, the resulting PTE points again to the page directory itself. Again, the MMU does not know about this and treats the page directory like any frame : It uses the offset to index into the physical frame. This means that the offset is an index to a byte in the page directory. If the last two bits of the offset are zero, the offset becomes an index to (offset DIV 4)'th entry in the page directory. In this way you can manipulate the page directory if it is in logical memory. Neat!
+\end_layout
+
+\begin_layout Standard
+Similarly, the address 
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\family typewriter
+| 1023 : 10 | X : 10 | Y : 10 | 0 : 2 |
+\family default
+\series default
+\shape default
+ 
+\end_layout
+
+\begin_layout Standard
+gets processed by the MMU as follows: The MMU will use the first 10 bits (value 1023) to index into the page directory to look up the PDE. PDE number 1023 points to the page directory itself. The MMU does not know about this and treats the page directory like any other page table page: It uses the second 10 bits (value 
+\family typewriter
+X
+\family default
+\series default
+\shape default
+) to index into the (supposed) page table page to look up the PTE (which in reality is the 
+\family typewriter
+X
+\family default
+\series default
+\shape default
+th PDE). The offset is now used to index into the 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+supposed) physical frame, which is in reality the page table page associated with the 
+\family typewriter
+X
+\family default
+\series default
+\shape default
+th directory entry. Therefore, the remaining 12 bits can be used to index into the 
+\family typewriter
+Y
+\family default
+\series default
+\shape default
+th entry in the page table page.
+\end_layout
+
+\begin_layout Standard
+The two examples above illustrate how one can manipulate a page directory that is stored in virtual memory (i.e. not stored in directly-mapped memory in our case) or a page table that is stored in virtual memory, respectively.
+\end_layout
+
+\begin_layout Subsection*
+An Allocator for Virtual Memory
+\end_layout
+
+\begin_layout Standard
+In the second part of this machine problem we will design and implement an 
+\series bold
+allocator for virtual memory
+\family default
+\series default
+\shape default
+. This allocator will be realized in form of the following virtual-memory pool class 
+\family typewriter
+VMPool
+\family default
+\series default
+\shape default
+: 
+\end_layout
+
+\begin_layout Verbatim
+class VMPool { /* Virtual Memory Pool */
+\end_layout
+
+\begin_layout Verbatim
+private:
+\end_layout
+
+\begin_layout Verbatim
+     /* -- DEFINE YOUR VIRTUAL MEMORY POOL DATA STRUCTURE(s) HERE. */
+\end_layout
+
+\begin_layout Verbatim
+
+\end_layout
+
+\begin_layout Verbatim
+public:
+\end_layout
+
+\begin_layout Verbatim
+   VMPool(unsigned long _base_address,
+\end_layout
+
+\begin_layout Verbatim
+          unsigned long _size,
+\end_layout
+
+\begin_layout Verbatim
+          FramePool *   _frame_pool
+\end_layout
+
+\begin_layout Verbatim
+          PageTable *   _page_table);
+\end_layout
+
+\begin_layout Verbatim
+   /* Initializes the data structures needed for the management of this
+\end_layout
+
+\begin_layout Verbatim
+      virtual-memory pool. 
+\end_layout
+
+\begin_layout Verbatim
+      _base_address is the logical start address of the pool. 
+\end_layout
+
+\begin_layout Verbatim
+      _size is the size of the pool in bytes.
+\end_layout
+
+\begin_layout Verbatim
+      _frame_pool points to the frame pool that provides the virtual 
+\end_layout
+
+\begin_layout Verbatim
+      memory pool with physical memory frames.
+\end_layout
+
+\begin_layout Verbatim
+      _page_table points to the page table that maps the logical memory
+\end_layout
+
+\begin_layout Verbatim
+      references to physical addresses. */
+\end_layout
+
+\begin_layout Verbatim
+
+\end_layout
+
+\begin_layout Verbatim
+   unsigned long allocate(unsigned long _size);
+\end_layout
+
+\begin_layout Verbatim
+   /* Allocates a region of _size bytes of memory from the virtual 
+\end_layout
+
+\begin_layout Verbatim
+      memory pool. If successful, returns the virtual address of the
+\end_layout
+
+\begin_layout Verbatim
+      start of the allocated region of memory. If fails, returns 0. */
+\end_layout
+
+\begin_layout Verbatim
+
+\end_layout
+
+\begin_layout Verbatim
+   void release(unsigned long _start_address);
+\end_layout
+
+\begin_layout Verbatim
+   /* Releases a region of previously allocated memory. The region
+\end_layout
+
+\begin_layout Verbatim
+      is identified by its start address, which was returned when the
+\end_layout
+
+\begin_layout Verbatim
+      region was allocated. */
+\end_layout
+
+\begin_layout Verbatim
+
+\end_layout
+
+\begin_layout Verbatim
+   BOOLEAN is_legitimate(unsigned long _address);
+\end_layout
+
+\begin_layout Verbatim
+   /* Returns FALSE if the address is not valid. An address is not valid
+\end_layout
+
+\begin_layout Verbatim
+      if it is not part of a region that is currently allocated. */
+\end_layout
+
+\begin_layout Verbatim
+};
+\end_layout
+
+\begin_layout Standard
+An address space can have 
+\series bold
+multiple virtual memory pools
+\family default
+\series default
+\shape default
+ (created by constructing multiple objects of class 
+\family typewriter
+VMPool
+\family default
+\series default
+\shape default
+), with each pool having 
+\series bold
+multiple regions
+\family default
+\series default
+\shape default
+, which are created by the function 
+\family typewriter
+allocate
+\family default
+\series default
+\shape default
+ and destroyed by the function 
+\family typewriter
+release
+\family default
+\series default
+\shape default
+. Our virtual-memory pool will be a somewhat lazy allocator: Instead of immediately allocating frames for a newly allocated memory region, the pool will simply 
+\begin_inset Quotes eld
+\end_inset
+
+remember
+\begin_inset Quotes erd
+\end_inset
+
+ that the region exists by storing start address and size in a local table. Only when a reference to a memory location inside the region is made, and a page fault occurs because no frame has been allocated yet, the page table (this is a separate object) finally allocates a frame and makes the page valid. In order for the page table object to know about virtual memory pools, we have the pools 
+\series bold
+register
+\family default
+\series default
+\shape default
+ with the page table by calling a function 
+\family typewriter
+PageTable::register(VMPool * _pool)
+\family default
+\series default
+\shape default
+. The page table object maintains a list (or likely an array) of references to virtual memory pools. When a virtual memory region is deallocated (as part of a call to 
+\family typewriter
+VMPool::release()
+\family default
+\series default
+\shape default
+, the virtual memory pool informs the page table that any frames allocated to pages within the region can be freed and that the pages are to be invalidated. In order to simplify the implementation, we have the virtual memory pool call the function 
+\family typewriter
+PageTable::free_page(unsigned int page_no)
+\family default
+\series default
+\shape default
+ for each page that is to be freed.
+\end_layout
+
+\begin_layout Subsubsection*
+Implementation Issues:
+\end_layout
+
+\begin_layout Standard
+There are no limits to how much you can optimize the implementation of your allocator. Keep the following points in mind when you design your virtual memory pool in order to keep the implementation simple. 
+\end_layout
+
+\begin_layout Itemize
+Ignore the fact that the function 
+\family typewriter
+allocate
+\family default
+\series default
+\shape default
+ allows for the allocation of arbitrary-sized regions. Instead, always allocate multiples of pages. In this way you won't have to deal with fractions of pages. Except for some internal fragmentation, the user would not know the difference. 
+\end_layout
+
+\begin_layout Itemize
+Don't try to optimize the way how frames are returned to the frame pool. Whenever a virtual memory pool releases a region, notify the page table that the pages can be released (and any allocated frames can be freed). 
+\end_layout
+
+\begin_layout Itemize
+Keep the implementation of the allocator simple. There is no need to implement a Buddy-System allocator, for example. A simple list of allocated regions, or something similar, should suffice. 
+\end_layout
+
+\begin_layout Itemize
+Even maintaining a list of allocated regions can be a bit of a challenge, given that we don't have a memory allocator yet. This is where the frame pool comes in handy. Use the frame pool to store an array of region descriptors. In the constructor of the virtual memory pool request a frame to store the region descriptor list. This solution limits the number of regions that you can allocate. You can easily eliminate this limitation by requesting a new overflow frame whenever the number of regions grows too big, and you run out of space. 
+\end_layout
+
+\begin_layout Itemize
+A new virtual memory pool 
+\series bold
+registers
+\family default
+\series default
+\shape default
+ with the page table object. In this way the page table can check whether memory references are legitimate (i.e., they are part of previously allocated regions). Whenever the page table experiences a page fault, it checks with the registered virtual memory pools whether the address is legitimate by calling the function 
+\family typewriter
+VMPool::is_legitimate
+\family default
+\series default
+\shape default
+ on the registered pools. If it is, the page table proceeds to allocate a frame; otherwise, the memory reference is invalid. 
+\end_layout
+
+\begin_layout Itemize
+At this time we don't have a backing store yet, and pages cannot be 
+\begin_inset Quotes eld
+\end_inset
+
+paged out
+\begin_inset Quotes erd
+\end_inset
+
+. This means that we can easily run out of memory if a program allocates multiple regions and then references lots of pages in the allocated regions. Don' worry about this for now. We will add page-level swapping in a later MP. 
+\end_layout
+
+\begin_layout Subsubsection*
+Modifications to Class 
+\family typewriter
+PageTable
+\family default
+\series default
+\shape default
+
+\end_layout
+
+\begin_layout Standard
+In this machine problem you will modify the class 
+\family typewriter
+PageTable
+\family default
+\series default
+\shape default
+ in the following ways: 
+\end_layout
+
+\begin_layout Enumerate
+Add support for page tables in virtual memory. This has been described above. 
+\end_layout
+
+\begin_layout Enumerate
+Add support for registration of virtual memory pools. In order to do this, the following function is to be provided: 
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+
+\family typewriter
+void PageTable::register(VMPool * _pool);
+\family default
+\series default
+\shape default
+ 
+\end_layout
+
+\begin_layout Standard
+The page table object maintains a list of registered pools. 
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Add support for virtual memory pools to request the release of previously allocated pages. The following function is to be provided: 
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+
+\family typewriter
+void PageTable::free_page(unsigned long _page_no);
+\family default
+\series default
+\shape default
+ 
+\end_layout
+
+\begin_layout Standard
+If the page is valid, the page table releases the frame and marks the page invalid. 
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Add support for region check in page fault handler. Whenever a page fault happens, check with registered pools to see whether the address is legitimate. If it is, proceed with the page fault. Otherwise, abort. 
+\end_layout
+
+\begin_layout Subsection*
+The Assignment
+\end_layout
+
+\begin_layout Enumerate
+Read Tim Robinson's tutorial 
+\begin_inset Quotes eld
+\end_inset
+
+Memory Management 1
+\begin_inset Quotes erd
+\end_inset
+
+ (
+\begin_inset Flex Flex:URL
+status collapsed
+
+\begin_layout Plain Layout
+http://www.osdever.net/tutorials/view/memory-management-1
+\end_layout
+
+\end_inset
+
+) to understand some of the intricacies of setting up a memory manager. 
+\end_layout
+
+\begin_layout Enumerate
+Extend your page table manager from MP2 to handle pages in virtual memory. Use the 
+\begin_inset Quotes eld
+\end_inset
+
+recursive page table lookup
+\begin_inset Quotes erd
+\end_inset
+
+ scheme described in this handout. 
+\end_layout
+
+\begin_layout Enumerate
+Extend your page table manager to (1) handle registration of virtual memory pools, (2) handle requests to free pages, and (3) check for legitimacy of logical addresses during page fault. 
+\end_layout
+
+\begin_layout Enumerate
+Implement a simple virtual memory pool manager as defined in file 
+\family typewriter
+vm_pool.H
+\family default
+\series default
+\shape default
+. Always allocate multiples of pages at a time. This will simplify your implementation. 
+\end_layout
+
+\begin_layout Standard
+You should have access to a set of source files, BOCHS environment files, and a makefile that should make your implementation easier. In particular, the 
+\family typewriter
+kernel.C
+\family default
+\series default
+\shape default
+ file will contain documentation that describes where to add code and how to proceed about testing the code as you progress through the machine problem. The updated interface for the page table is available in 
+\family typewriter
+page_table.H
+\family default
+\series default
+\shape default
+ and the interface for the virtual memory pool manager is available in file 
+\family typewriter
+vm_pool.H
+\family default
+\series default
+\shape default
+.
+\end_layout
+
+\begin_layout Subsection*
+What to Hand In
+\end_layout
+
+\begin_layout Standard
+You are to hand in the following items on CSNET: 
+\end_layout
+
+\begin_layout Itemize
+A ZIP file containing the following files: 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+A design document (in PDF format) that describes your implementation of the page table and the virtual memory pool. 
+\end_layout
+
+\begin_layout Enumerate
+A pair of files, called 
+\family typewriter
+page_table.H
+\family default
+\series default
+\shape default
+ and 
+\family typewriter
+page_table.C
+\family default
+\series default
+\shape default
+, which contain the definition and implementation of the required functions to initialize and enable paging, to construct the page table, to handle registration of virtual memory pools, and to handle page faults. Any modification to the provided 
+\family typewriter
+.H
+\family default
+\series default
+\shape default
+ file must be well motivated and documented. 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% rb 11-10-25
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% The following was added at the request of TA Suneil Mohan. 
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% He was having problems with grading because some students 
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% were relying on their own implementations of frame pools.
+\end_layout
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Enumerate
+A pair of files, called 
+\family typewriter
+frame_pool.H
+\family default
+\series default
+\shape default
+ and 
+\family typewriter
+frame_pool.C
+\family default
+\series default
+\shape default
+, which contain the definition and implementation of the frame pool. (These two files are for the benefit of the grader only. If you have not modified these files, simply submit the ones that were handed out to you. Some students have modified them in the previous machine problem, which has made it difficult for the TA to grade the submissions.) 
+\end_layout
+
+\begin_layout Enumerate
+A pair of files, called 
+\family typewriter
+vm_pool.H
+\family default
+\series default
+\shape default
+ and 
+\family typewriter
+vm_pool.C
+\family default
+\series default
+\shape default
+, which contain the definition and implementation of the virtual memory pool. Any modifications to the provided file 
+\family typewriter
+vm_pool.H
+\family default
+\series default
+\shape default
+ must be well motivated and documented. 
+\end_layout
+
+\end_deeper
+\begin_deeper
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% rb 11-10-25
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% This was added at the request of TA Suneil Mohan, who was having problems
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% with file names.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\series bold
+Note:
+\family default
+\series default
+\shape default
+ Pay attention to the capitalization in file names. For example, if we request a file called 
+\family typewriter
+file.H
+\family default
+\series default
+\shape default
+, we want the file name to end with a capital 
+\family typewriter
+H
+\family default
+\series default
+\shape default
+, not a lower-case one. While Windows does not care about capitalization in file names, other operating systems do. This then causes all kinds of problems when the TA grades the submission.
+\end_layout
+
+\begin_layout Itemize
+Grading of these MPs is a very tedious chore. These handin instructions are meant to mitigate the difficulty of grading, and to ensure that the grader does not overlook any of your efforts.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Failure to follow the handin instructions will result in lost points.
+\family default
+\series default
+\shape default
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+document
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

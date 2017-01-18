@@ -1,0 +1,317 @@
+% This is a Style file
+% Created by:   R. Bettati  (based on N.Bowen, E.Mucke et al.)
+% Date:         1993
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCES
+
+\newcommand{\thrmref}[1]{Theorem~\ref{#1}}
+%\newcommand{\lemmaref}[1]{Lemma~\ref{#1}}
+\newcommand{\eqref}[1]{Equation~(\ref{#1})}
+\newcommand{\figref}[1]{Figure~\ref{#1}}
+\newcommand{\figrefs}[1]{Figures~\ref{#1}}
+\newcommand{\chapref}[1]{Chapter~\ref{#1}}
+\newcommand{\appref}[1]{Appendix~\ref{#1}}
+\newcommand{\sectref}[1]{Section~\ref{#1}}
+\newcommand{\tabref}[1]{Table~\ref{#1}}
+\newcommand{\mypageref}[1]{Page~\pageref{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% - The following is a canonical naming of algorithms.
+\newcommand{\algc}[1]{Algorithm~{$\cal #1$}}
+\newcommand{\alg}[1]{Algorithm~{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% - The following gives a canonical representation of algorithms.
+\newcommand{\algorithm}[2]{
+  \renewcommand{\baselinestretch}{1.2}
+%  \oneandonehalfspace
+  \noindent\rule[0truecm]{6.25in}{0.01truein}\\
+  Algorithm~#1: \\
+  {\small
+   #2
+  }
+  \noindent\rule[0truecm]{6.25in}{0.01truein}\\
+}
+
+% - The following gives a canonical representation of problems.
+%\newcommand{\problem}[2]{
+%  \renewcommand{\baselinestretch}{1.2}
+%  \oneandonehalfspace
+%  \noindent\rule[0truecm]{6.25in}{0.01truein}\\
+%  Problem~#1: \\
+%  {\small
+%   #2
+%  }
+%  \noindent\rule[0truecm]{6.25in}{0.01truein}\\
+%}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% - The following is used as an 'end-of-proof' sign.
+\newcommand{\eop}{\hfill $\Box$}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The theorem environments.
+
+%\newtheorem{theorem}{Theorem}
+%\newtheorem{corollary}{Corollary}
+%\newtheorem{lemma}{Lemma}
+\newtheorem{observation}{Observation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \begin{definitions} ... \end{definitions} --- definitions environment
+
+%     This is the neat definitions environment by Brian T Schellenberger 
+%     <bts@sas> from the texhax news.group.  It lets you do "programming" 
+%     in LaTeX like in most programming languages:  Space is only for the 
+%     convenience of the programmer.  In other words, you can space things 
+%     so that they look pretty in LaTeX source code and you no longer need 
+%     tons of ugly percent signs at the ends of lines.  
+%     Below is Brian's original documentation.  --EPM
+
+%%   definitions: within \begin{definitions} (which does not really define
+%%   a group), spacing means nothing.  Use \space for a space character
+%%   and \par for a blank line, for those rare instances where they are
+%%   really desired.  Also, @ is seen as a letter.  All these are reversed
+%%   with \end{definitions} --- even if they had the same catagories before!
+%%   These should not be nested but, unfortunately, there is no way to tell.
+
+\newif\ifatletter
+
+\newenvironment {definitions}
+ {
+  \endgroup     % doesn't really nest
+  \ifcat @a \atlettertrue \else \atletterfalse \fi
+                % \catcode`\ =\ignoreC \catcode`\^^M=\ignoreC
+  \makeatletter   \catcode`\ =9        \catcode`\^^M=9        
+ }%
+ {
+               % \catcode`\ =\spaceC \catcode`\^^M=\nlC
+  \makeatother   \catcode`\ =10      \catcode`\^^M=5   
+  \ifatletter \makeatletter \fi
+  \begingroup   % doesn't really nest
+  \def \@currenvir {definitions}    % [ see remark below ]
+ }
+
+% [ Remark: Originally, the last two lines above (\begingroup... & \def...)
+%   were the other way round.  However, all of a sudden, TeX chocked whenever
+%   parsing ``\end{definitions},'' so I had to change it as above.  It seems
+%   a bit more logic now, but then, I don't really know...  (The \@currenvir 
+%   tells LaTeX that it was parsing \begin{definitions}...\end{definitions}. 
+% --EPM ]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Now, let's open the {definitions} environment.
+% (Note that this should be closed at the end of this file!)
+
+\begin{definitions}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SOME SERIOUS MATH
+
+\newcommand {\ceiling}[1]  {{\left\lceil  #1 \right\rceil}}
+\newcommand {\floor}[1]    {{\left\lfloor #1 \right\rfloor}}
+\newcommand {\ifrac}[2]    {\floor{\frac{#1}{#2}}}
+\newcommand {\scalprod}[2] {{\langle #1 ,\, #2 \rangle}}
+\newcommand {\abs}[1]      {{| #1 |}}
+
+\newcommand {\Real}        {I\!\!R}
+\newcommand {\Integer}     {I\!\!I}
+\newcommand {\Natural}     {I\!\!N}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \theoremstyle{HEAD-STYLE}{BODY-STYLE}
+% corrects LaTeX's "italic" theorem style; eg: \theoremstyle{\bf}{\rm}   
+% (hack based on latex.tex)
+
+\def\theoremstyle#1#2 {\def\@@theoremheadstyle{#1}
+                        \def\@@theorembodystyle{#2}}
+\def\@@theoremheadstyle {\bf}
+\def\@@theorembodystyle {\it}
+\def\@begintheorem#1#2 {\@@theorembodystyle 
+                        \trivlist 
+                        \item[\hskip 
+                              \labelsep{\@@theoremheadstyle #1\ #2.}]}
+\def\@opargbegintheorem#1#2#3 {\@@theorembodystyle 
+                               \trivlist 
+                                \item[\hskip 
+                                 \labelsep{\@@theoremheadstyle #1\ #2\ (#3).}]}
+
+
+% Theorems should be Boldface with roman blah blah.
+\theoremstyle{\bf}{\rm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% {proof} environment 
+
+%\newenvironment{proof}{{\@@theoremheadstyle Proof.}}
+%                      {\hfill $\Box$}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% - A simple description list environment where the items are not
+%   highlighted.
+
+\newcounter{rickscounter}
+\newenvironment{simpledesc}{\begin{list}{\Roman{rickscounter}}
+                                        {\usecounter{rickscounter}
+                                         \setlength{\rightmargin}{0in}}
+%                                        \setlength{\rightmargin}{\leftmargin}}
+                           }
+                           {\end{list}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ``Solve'' the problems with LaTeX floats by assuming all floats to be at 
+% the top of the page, like in:  ``\begin{figure}[t] ... \end{figure}''
+% Note: article.sty has \setcounter{bottomnumber}{1} & \def\bottomfraction{.3}
+
+\setcounter{topnumber}{2}
+\renewcommand{\topfraction}{1.0}
+\renewcommand{\textfraction}{0.0}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SOMETHING FOR THE VAIN:
+% As appeared in... page style on 1st page. 
+% 
+% Used as:
+%
+% \maketitle
+% \asappearedin{As submitted to:}{
+%  Proceedings of the 12th Annual Conference for The Absolute Nonsense,
+%   Yokohama, Japan, 1992, pages 123--150.
+% }
+%
+
+\makeatletter
+\def\ps@asappearedinheading%%
+{%%
+  \def\@oddhead{{\tt\small \der@kopf \hfill}}
+  \def\@oddfoot{}
+  \if@twoside
+    \def\@evenhead{}
+    \def\@evenfoot{}
+  \else
+    \def\@evenhead{}
+    \def\@evenfoot{}
+  \fi
+}
+\def\asappearedin#1#2{\thispagestyle{asappearedinheading}
+ \def\der@kopf{{#1} \parbox[t]{0.8\textwidth}{#2}}
+}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% - The following helps with values with no | | at bottom of column
+\newcommand{\mce}[1]{\multicolumn{1}{c}{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% - The following two are for using postscript figure.
+% - Must first use \documentstyle[12pt,epsf]{article}
+% - The first one psmp is to put one figure centered on a page.
+% - format is: psmp{your_ps_file.ps}{0.6}{0.2}
+% - where the file name is oobvious and the 0.6 is the size of the figure.
+% - and 0.2 is the portion of page down the right column (above will center
+% - the figure) \psmp{zz.ps}{0.6}{0.4} would flush-left the figure.
+%
+% - The second one (pspair is to put two PS files side by side with
+% - comments.
+% - usage: pspair{left_ps.ps}{Left label}{right_ps.ps}{Right label}
+%   author: Nick Bowen , January 1991.
+
+\newcommand{\psmp}[3]{\hfill \epsfxsize = #2\textwidth
+\begin{minipage}[t]{#2\textwidth}
+  \epsfbox{#1} 
+  \end{minipage} 
+\begin{minipage}[t]{#3\textwidth} 
+~ 
+\end{minipage}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% TWO FIGURES WITH CAPTIONS
+%
+
+\newcommand{\pspair}[4]{
+  \epsfxsize = 0.48\textwidth
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#1}
+      ~\\(a) \  #2
+    \end{center}
+  \end{minipage}
+  \hfill
+  \epsfxsize = 0.48\textwidth
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#3}
+      ~\\(b) \ #4
+    \end{center}
+  \end{minipage}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% TWO FIGURES WITHOUT CAPTIONS
+%
+
+\newcommand{\psspair}[2]{
+  \epsfxsize = 0.495\textwidth
+  \begin{minipage}[t]{0.495\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#1}
+    \end{center}
+  \end{minipage}
+  \hfill
+  \epsfxsize = 0.495\textwidth
+  \begin{minipage}[t]{0.495\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#2}
+    \end{center}
+  \end{minipage}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% THREE FIGURES WITH CAPTIONS
+%
+
+\newcommand{\psthree}[6]{
+  \begin{center}
+    \epsfxsize = 0.48\textwidth
+    \leavevmode
+    \epsfbox{#1}
+    ~\\(a) \ #2
+  \end{center}
+  \epsfxsize = 0.48\textwidth
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#3}
+      ~\\(b) \ #4
+    \end{center}
+  \end{minipage}
+  \hfill
+  \epsfxsize = 0.48\textwidth
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{center}
+      \leavevmode
+      \epsfbox{#5}
+      ~\\(c) \ #6
+    \end{center}
+  \end{minipage}
+}
+
+
+\end{definitions}
